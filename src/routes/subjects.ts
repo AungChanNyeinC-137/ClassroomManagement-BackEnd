@@ -8,23 +8,32 @@ const subjectsRouter = express.Router();
 subjectsRouter.get("/", async (req, res) => {
   try {
     const { search, department, page = 1, limit = 10 } = req.query;
-    const currentPage = Math.max(1, +page);
-    const limitPerPage = Math.max(1, +limit);
-
+    const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitPerPage = Math.min(
+      Math.max(1, parseInt(String(limit), 10) || 10),
+      100,
+    ); //max 100 records per page
     const offset = (currentPage - 1) * limitPerPage;
     const filterCondition = [];
     if (search) {
       filterCondition.push(
         or(
           ilike(subjects.name, `%${search}%`),
-          ilike(subjects.code, `%${search}%`)
-        )
+          ilike(subjects.code, `%${search}%`),
+        ),
       );
     }
 
     if (department) {
-      filterCondition.push(ilike(departments.name, `%${department}%`));
+      // Escape SQL wildcard characters (% and _) to prevent pattern abuse
+      const escapedDepartment = String(department).replace(/[%_]/g, "\\$&");
+
+      // Wrap with % for partial matching
+      const deptPattern = `%${escapedDepartment}%`;
+
+      filterCondition.push(ilike(departments.name, deptPattern));
     }
+
     //Combining all filters
     const whereClause =
       filterCondition.length > 0 ? and(...filterCondition) : undefined;
@@ -47,14 +56,13 @@ subjectsRouter.get("/", async (req, res) => {
       .limit(limitPerPage)
       .offset(offset);
 
-      res.status(200).json({
-        data: subjectsList,
-        page: currentPage,
-        limit: limitPerPage,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount/limitPerPage),
-      })
-
+    res.status(200).json({
+      data: subjectsList,
+      page: currentPage,
+      limit: limitPerPage,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limitPerPage),
+    });
   } catch (error) {
     console.error(`GET/subjects error: ${error}`);
     res.status(500).json({ error: "Failed to get subjects" });

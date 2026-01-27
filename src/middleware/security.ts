@@ -45,7 +45,7 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
             return res.status(403).json({error: 'forbidden', message: 'Request blocked by Security Poicy'});
         }
         if (decision.isDenied() && decision.reason.isRateLimit()) {
-            return res.status(403).json({error: 'Too Many reqi]', message: 'Request blocked by Security Poicy'});
+            return res.status(403).json({error: 'Too Many requests', message: 'Request blocked by Security Poicy'});
         }
         next();
     } catch (error) {
